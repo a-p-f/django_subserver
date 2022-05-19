@@ -1,5 +1,7 @@
 from django.http import HttpResponse, Http404
-from typing import Optional
+from typing import Any, Mapping, Optional, Sequence
+
+from .base import SubRequest, SubView
 
 class Router(SubView):
     def prepare(self, request: SubRequest, **captured_params:Any) -> Optional[HttpResponse] :
@@ -16,7 +18,7 @@ class Router(SubView):
 
     root_view: Optional[SubView] = None
 
-    def routes() -> dict[str, SubView]:
+    def routes() -> Mapping[str, SubView]:
         '''
         Subclasses may override.
         Note - we'll always call this as if it was a staticmethod 
@@ -29,7 +31,7 @@ class Router(SubView):
 
     path_view: Optional[SubView] = None
 
-    def cascade_to() -> list[SubView]:
+    def cascade_to() -> Sequence[SubView]:
         '''
         Subclasses may override.
         Note - we'll always call this as if it was a staticmethod 

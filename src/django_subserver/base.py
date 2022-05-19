@@ -1,5 +1,5 @@
 from abc import ABC
-from django.http import HttpRequest
+from django.http import HttpRequest, HttpResponse
 
 class SubRequest:
     '''
@@ -67,10 +67,6 @@ class SubRequest:
 
     # Expose various useful request properties
     @property 
-    def session(self):
-        '''Returns self.request.session'''
-        return self._request.session
-    @property 
     def headers(self):
         '''Returns self.request.headers'''
         return self._request.headers
@@ -90,20 +86,6 @@ class SubRequest:
     def FILES(self):
         '''Returns self.request.FILES'''
         return self._request.FILES
-
-    @property
-    def user(self):
-        '''
-        If request.user.is_anonymous, returns None.
-        Otherwise, returns request.user.
-
-        This, in our opinion, is how django should always have behaved.
-        Returning an Anonymous user just makes code more confusing.
-        '''
-        user = self._request.user
-        if user.is_anonymous :
-            return None
-        return user
 
 class SubView(ABC):
     '''
