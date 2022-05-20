@@ -14,7 +14,7 @@ SECRET_KEY = 'f_^t@_0t2tqsm$2tzie&k05xt9^21!f&3+m7sp(^w%kvaq__x+'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['testserver']
 
 # Application definition
 
@@ -35,6 +35,11 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': True,
+}
 
 ROOT_URLCONF = 'tests.test'
 

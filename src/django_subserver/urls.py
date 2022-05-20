@@ -26,18 +26,21 @@ def sub_view_urls(sub_view:SubView) -> Sequence[urls.URLPattern]:
     '''
     def view(request, sub_path='', **other_url_kwargs):
         sub_request = SubRequest(request)
-        parent_path = request.path[:len(sub_path)]
 
-        if not parent_path.endswith('/') :
-            raise ValueError(f'Invalid parent path: "{parent_path}". Any prefix you include() sub_view_urls() underneath MUST end in "/".')
+        path = request.path
+        handled = path[:len(path)-len(sub_path)]
 
-        sub_request.advance(parent_path)
+        if not handled.endswith('/') :
+            raise ValueError(f'Invalid parent path: "{handled}". Any prefix you include() sub_view_urls() underneath MUST end in "/".')
+
+        # handled endswith '/', but that '/' is already part of sub_request.parent_path, not sub_request.sub_path
+        sub_request._advance(handled[1:])
         return sub_view(sub_request, **other_url_kwargs)
 
     return [
         # The empty sub_path case
-        urls.path(pattern, view),
+        urls.path('', view),
         # The non-empty sub_path case
-        urls.path(pattern+'<path:sub_path>', view),
+        urls.path('<path:sub_path>', view),
     ]
 
