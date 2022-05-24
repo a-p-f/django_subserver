@@ -1,6 +1,4 @@
-TODO: change name to django_subview
-
-# django_subview
+# django_subserver
 
 Allows you to compose your web app from a hierarchy of "sub views".
 
