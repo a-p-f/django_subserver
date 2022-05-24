@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-
-rm -r dist/*
-python -m build
-twine upload dist/*
-git add -A
-git commit
-git tag -m '' v`cat VERSION`
-git push origin

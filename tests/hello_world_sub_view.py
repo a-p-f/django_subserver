@@ -1,4 +1,4 @@
-from django_subview.base import SubView
+from django_subserver.base import SubView
 
 class View(SubView):
     def __call__(self, *args, **kwargs):
