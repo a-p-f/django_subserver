@@ -13,12 +13,8 @@ class SubRequest:
 
     This interface is considered final.
     We'll never add any more (public) attributes.
-    All of our own attributes are either prefixed with '_', or are
-    implemented via properties (which cannot accidentally be replaced).
-
     Users of SubRequests should feel free to add attributes at will, 
-    to pass information from one "sub view" to another
-    (just don't add anything prefixed with '_').
+    to pass information from one "sub view" to another.
     '''
     def __init__(self, request: HttpRequest): 
         self._request = request
@@ -51,19 +47,41 @@ class SubRequest:
         '''
         return self._request.path[self._parent_path_length:]
 
-    def _advance(self, path_portion: str):
+    def advance(self, path_portion: str):
         '''
-        Note: _advance _is_ considered public 
-        (though end users aren't likely to need it).
-
-        The main reason it's prefixed with _ is to ensure that end users 
-        don't accidentally overwrite it.
+        Note: end users aren't likely to ever need this.
         '''
         if not path_portion.endswith('/') :
             raise ValueError('path_portion must end with "/"')
         if not self.sub_path.startswith(path_portion) :
             raise ValueError('path_portion is not a prefix of sub_path')
         self._parent_path_length += len(path_portion)
+
+    def clear_data(self):
+        '''
+        Removes all custom data from instance.
+
+        Useful if you want to ensure that the next sub view you delegate to
+        is decoupled from previous sub views.
+        '''
+        keys = [key for key in self.__dict__ if not key.startswith('_')]
+        for key in keys :
+            del self.__dict__[key]
+
+    def __setattr__(self, attr, value):
+        '''
+        We encourage adding arbitrary data directly onto SubRequest instances.
+        Here, we make sure such usage doesn't accidentally shadow class attributes.
+        We also ensure that attributes don't start with '_', because those 
+        are reservered for use internally by the class.
+        '''
+        if attr.startswith('_') :
+            if attr not in ('_request', '_parent_path_length') :
+                raise AttributeError(f'Private attributes (starting with "_") are not allowed on SubRequest instances. They are reserved for use by the SubRequest class.')
+        else :
+            if hasattr(SubRequest, attr):
+                raise AttributeError(f'Cannot shadow SubRequest attributes/properties. "{attr}" is already defined on SubRequest.')
+        super().__setattr__(attr, value)
 
     # Expose various useful request properties
     @property 

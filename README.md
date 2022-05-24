@@ -2,39 +2,36 @@ TODO: change name to django_subview
 
 # django_subview
 
-A more powerful approach to composing your web app from a hierarchy of "sub views".
+Allows you to compose your web app from a hierarchy of "sub views".
 
 A standard django view is responsible for interpreting _all_ of the url parameters, and then returing a response. In crud/management apps, you often end up with many views that share common "preprocessing" steps.
 
 The "sub view" approach is different. A sub view may return a response, or it may interpret only part of the url and then delegate the request (and the rest of the url) to another sub view.
 
-Each sub view in the chain can preform any type of middleware action - attach data to the request, return early, provide response manipulation, or handle exceptions from subsequent sub views.
+Each sub view in the chain can preform any type of middleware action - attach data to the request, return early, manipulate the response from subsequent sub views, or handle exceptions from subsequent sub views.
 
 ## Intro
 
-Recommended import: `import django_subview as dsv`
-Everything is available from the root module.
+`SubRequest`: A simple wrapper around django's HttpRequest, which maintains a concept of "parent_path" (which has already been interpreted by higher sub views) and "sub_path" (which must still be interpreted). You won't likely ever have to create these, but you'll be using them instead of plain HttpRequests in your sub views.
 
-`dsv.SubRequest`: A simple wrapper around django's HttpRequest, which maintains a concept of "parent_path" (which has already been interpreted by higher sub views) and "sub_path" (which must still be interpreted). You won't likely ever have to create these, but you'll be using them instead of plain HttpRequests in your sub views.
+`Router`: A sub view which performs pattern matching (on sub_path) and delegates to other sub views.
 
-`dsv.Router`: A sub view which performs pattern matching (on sub_path) and delegates to other sub views.
+`MethodView`: A sub view which performs dispatch-by-method, similar to django.views.generic.View. 
 
-`dsv.MethodView`: A sub view which performs dispatch-by-method, similar to django.views.generic.View. 
-
-`dsv.sub_view_urls(sub_view)`: A utility function for generating a list of (2) url patterns, for mapping a parent path to a particular sub view.
+`sub_view_urls(sub_view)`: A utility function for generating a list of (2) url patterns, for mapping a parent path to a particular sub view.
 
 ## Recommended (Basic) Setup
 
 ### urls.py
 ```py
-import django_subview as dsv
-from routers import root_router
+from django_subview import sub_view_urls
+from .routers import root_router
 
 urlpatterns = [
     # standard django views here
     ...,
 
-    path('', include(dsv.sub_view_urls(root_router))),
+    path('', include(sub_view_urls(root_router))),
     # OR
     # path('my_sub_view_handled_section/', include(dsv.sub_view_urls(RouterRoot))),
 ]
@@ -61,11 +58,10 @@ def get_view(module_name):
 
 class root_router(Router):
     root_view = get_view('home')
-    def routes():
-        return {
-            'admin/': admin_router(),
-            'my_books/': my_books_router(),
-        }
+    routes = {
+        'admin/': admin_router(),
+        'my_books/': 'my_books_router',
+    }
 class admin_router(Router):
     ...
 class my_books_router(Router):
@@ -74,10 +70,9 @@ class my_books_router(Router):
         request.my_books = ...
 
     root_view = get_view('my_book_list')
-    def routes():
-        return {
-            '<int:book_id>/': my_books_detail_router(),
-        }
+    routes = {
+        '<int:book_id>/': 'my_books_detail_router',
+    }
     ...
 class my_books_detail_router(Router):
     def prepare(self, request, book_id):
@@ -100,7 +95,7 @@ home.py:
 from django_subview import MethodView
 
 class View(MethodView):
-    def get(request):
+    def get(self, request):
         ...
 ```
 

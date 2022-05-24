@@ -3,6 +3,7 @@ from importlib import import_module
 from typing import Any, Mapping, Optional, Sequence, Union
 
 from .base import SubRequest, SubView
+from .pattern import Pattern
 
 ViewSpec = Union[SubView, str]
 def _get_view(owning_class, view_spec):
@@ -54,6 +55,7 @@ class Router(SubView):
     - cascade
         list of sub views to try
         if any of them do _not_ raise Http404, we'll return whatever they do
+    # TODO - add path_view
 
     Subclasses may also want to override prepare and/or dispatch.
     '''
