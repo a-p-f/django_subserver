@@ -55,13 +55,15 @@ class Router(SubView):
     - cascade
         list of sub views to try
         if any of them do _not_ raise Http404, we'll return whatever they do
-    # TODO - add path_view
+    - path_view
+        called when sub_path is non-empty, and none of the above match/return a response
 
     Subclasses may also want to override prepare and/or dispatch.
     '''
     root_view: Optional[SubView] = None
     routes: Mapping[str, ViewSpec] = dict()
     cascade: Sequence[ViewSpec] = []
+    path_view: Optional[SubView] = None
 
     def prepare(self, request: SubRequest, **captured_params:Any) -> Optional[HttpResponse] :
         '''
@@ -115,4 +117,6 @@ class Router(SubView):
                 return view(request)
             except Http404 :
                 continue
+        if request.sub_path and self.path_view :
+            return self.__class__.path_view(request)
         raise Http404()

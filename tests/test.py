@@ -8,7 +8,8 @@ from django.http import Http404, HttpResponse, JsonResponse
 from django.test import Client, RequestFactory
 from django import urls
 import django_subserver as dss
-from django_subserver import MethodView
+from django_subserver import MethodView, Router, SubRequest
+from django_subserver.base import SubView
 from django_subserver.pattern import Pattern
 import json
 import unittest
@@ -241,8 +242,50 @@ class TestRouter(unittest.TestCase):
         r = R()(self.sub_request_factory('xyz/'))
         self.assertEqual(r, 'CASCADE')
 
+    def test_path(self):
+        def match_a(request):
+            if request.sub_path == 'a' :
+                return 'CASCADE'
+            raise Http404()
+        class R(dss.Router):
+            cascade = [
+                match_a,
+            ]
+            path_view = lambda r, **kwargs: r.sub_path
+
+        self.assertEqual(
+            R()(SubRequest(RequestFactory().get('/a'))),
+            'CASCADE',
+        )
+        self.assertEqual(
+            R()(SubRequest(RequestFactory().get('/foobar'))),
+            'foobar',
+        )
+
+    def test_view_spec(self):
+        class R(Router):
+            routes = {
+                # Defined in same module
+                'a/': 'ReturnA',
+                # Defined in external module
+                'b/': 'tests.hello_world_sub_view.View',
+            }
+
+        r = R()
+        self.assertEqual(
+            r(SubRequest(RequestFactory().get('/a/'))),
+            'A',
+        )
+        self.assertEqual(
+            r(SubRequest(RequestFactory().get('/b/'))),
+            'Hello, World!',
+        )
+
+class ReturnA(SubView):
+    def __call__(self, *args, **kwargs):
+        return 'A'
+
     # TODO - string ViewSpec test
-    # TODO - path test
 
 class TestMethodView(unittest.TestCase):
     def sub_request_factory(self, path):
@@ -286,7 +329,7 @@ class TestMethodView(unittest.TestCase):
         req = RequestFactory().options('/foo/')
         req = dss.SubRequest(req)
         response = h(req)
-        self.assertEqual(response.headers['allow'], 'GET, POST, OPTIONS')
+        self.assertEqual(response.get('allow'), 'GET, POST, OPTIONS')
 
 if __name__ == '__main__':
     unittest.main()

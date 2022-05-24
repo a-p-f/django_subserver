@@ -1,9 +1,0 @@
-LICENSE
-README.md
-pyproject.toml
-setup.cfg
-setup.py
-src/django_subserver.egg-info/PKG-INFO
-src/django_subserver.egg-info/SOURCES.txt
-src/django_subserver.egg-info/dependency_links.txt
-src/django_subserver.egg-info/top_level.txt
