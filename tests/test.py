@@ -7,8 +7,7 @@ from django import urls
 from django.http import Http404, HttpResponse, JsonResponse
 from django.test import Client, RequestFactory
 from django import urls
-import django_subserver as dss
-from django_subserver import MethodView, Router, SubRequest
+from django_subserver import MethodView, Router, SubRequest, sub_view_urls
 from django_subserver.base import SubView
 from django_subserver.pattern import Pattern
 import json
@@ -25,9 +24,9 @@ def echoing_sub_view(sub_request, **kwargs):
     ))
 urlpatterns = [
     urls.path('', home_page),
-    urls.path('no_trailing_slash', urls.include(dss.sub_view_urls(echoing_sub_view))),
-    urls.path('echoing_sub_view/', urls.include(dss.sub_view_urls(echoing_sub_view))),
-    urls.path('<int:x>/echoing_sub_view/', urls.include(dss.sub_view_urls(echoing_sub_view))),
+    urls.path('no_trailing_slash', urls.include(sub_view_urls(echoing_sub_view))),
+    urls.path('echoing_sub_view/', urls.include(sub_view_urls(echoing_sub_view))),
+    urls.path('<int:x>/echoing_sub_view/', urls.include(sub_view_urls(echoing_sub_view))),
 ]
 def get_json_data(url):
     c = Client()
@@ -66,7 +65,7 @@ class TestBasic(unittest.TestCase):
 
     def test_sub_request(self):
         r = RequestFactory().post('/foo/bar/baz?x=1', data=dict(y=2))
-        sr = dss.SubRequest(r)
+        sr = SubRequest(r)
 
         sr.custom_property = 5
         self.assertEqual(sr.custom_property, 5)
@@ -185,22 +184,22 @@ class TestPattern(unittest.TestCase):
         self.assertEqual(captures, dict(s='string', i=-33, d=date(2000,1,1)))
 
 class TestRouter(unittest.TestCase):
-    class EmptyRouter(dss.Router):
+    class EmptyRouter(Router):
         pass
     def returning_mock_sub_view(self, sub_request, **kwargs):
         return sub_request, kwargs
     def sub_request_factory(self, path):
         r = RequestFactory().get(path)
-        return dss.SubRequest(r)
+        return SubRequest(r)
 
     def test_empty(self):
-        class R(dss.Router):
+        class R(Router):
             pass
         with self.assertRaises(Http404):
             R()(self.sub_request_factory('/foo/'))
 
     def test_root(self):
-        class R(dss.Router):
+        class R(Router):
             root_view = lambda sr: 1
         self.assertEqual(R()(self.sub_request_factory('/')), 1)
 
@@ -214,7 +213,7 @@ class TestRouter(unittest.TestCase):
                 return 2
             raise Http404()
 
-        class R(dss.Router):
+        class R(Router):
             cascade = [
                 match_1,
                 match_2,
@@ -226,7 +225,7 @@ class TestRouter(unittest.TestCase):
             R()(self.sub_request_factory('/3'))
 
     def test_routes(self):
-        class R(dss.Router):
+        class R(Router):
             routes = {
                 '<int:x>/': self.returning_mock_sub_view,
             }
@@ -247,7 +246,7 @@ class TestRouter(unittest.TestCase):
             if request.sub_path == 'a' :
                 return 'CASCADE'
             raise Http404()
-        class R(dss.Router):
+        class R(Router):
             cascade = [
                 match_a,
             ]
@@ -290,7 +289,7 @@ class ReturnA(SubView):
 class TestMethodView(unittest.TestCase):
     def sub_request_factory(self, path):
         r = RequestFactory().get(path)
-        return dss.SubRequest(r)
+        return SubRequest(r)
 
     def test_get(self):
         class View(MethodView):
@@ -315,7 +314,7 @@ class TestMethodView(unittest.TestCase):
 
         h = View()
         req = RequestFactory().post('/foo/')
-        req = dss.SubRequest(req)
+        req = SubRequest(req)
         response = h(req)
         self.assertEqual(response.status_code, 405)
 
@@ -327,7 +326,7 @@ class TestMethodView(unittest.TestCase):
                 return 2
         h = View()
         req = RequestFactory().options('/foo/')
-        req = dss.SubRequest(req)
+        req = SubRequest(req)
         response = h(req)
         self.assertEqual(response.get('allow'), 'GET, POST, OPTIONS')
 
