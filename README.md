@@ -1,5 +1,3 @@
-TODO: change name to django_subview
-
 # django_subview
 
 Allows you to compose your web app from a hierarchy of "sub views".
@@ -8,7 +6,7 @@ A standard django view is responsible for interpreting _all_ of the url paramete
 
 The "sub view" approach is different. A sub view may return a response, or it may interpret only part of the url and then delegate the request (and the rest of the url) to another sub view.
 
-Each sub view in the chain can preform any type of middleware action - attach data to the request, return early, manipulate the response from subsequent sub views, or handle exceptions from subsequent sub views.
+Each sub view in the chain can preform any type of middleware action - attach data to the request, return early, manipulate the response, or handle exceptions.
 
 ## Intro
 
@@ -16,9 +14,9 @@ Each sub view in the chain can preform any type of middleware action - attach da
 
 `Router`: A sub view which performs pattern matching (on sub_path) and delegates to other sub views.
 
-`MethodView`: A sub view which performs dispatch-by-method, similar to django.views.generic.View. 
-
 `sub_view_urls(sub_view)`: A utility function for generating a list of (2) url patterns, for mapping a parent path to a particular sub view.
+
+`MethodView`: A sub view which performs dispatch-by-method, similar to django.views.generic.View. 
 
 ## Recommended (Basic) Setup
 
