@@ -45,7 +45,7 @@ We recommend:
 - put all of your auth logic in routers.py: the final sub views you delegate to should be dumb
 
 ```py
-from django_subview import Router
+from django_subserver import Router
 from importlib import import_module
 
 def get_view(module_name):

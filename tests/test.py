@@ -63,6 +63,25 @@ class TestBasic(unittest.TestCase):
         self.assertEqual(data['sub_path'], '')
         self.assertEqual(data['kwargs'], dict(x=1))
 
+    def test_root_urls(self):
+        '''
+        Note - here we're verifying that sub_view_urls works when installed at '/'.
+        Unlike test_urls, which is a complete integration test relying on django being setup,
+        here we hack into django internals and do our own url resolving.
+        This is easier than trying to reconfigure django with a new set of urlpatterns.
+        '''
+        def sub_view(request, **kwargs):
+            return 5
+        from django.urls.resolvers import RegexPattern, URLResolver
+        from django.urls import path, include
+        r = URLResolver(RegexPattern(r'^/'), [
+            path('', include(sub_view_urls(sub_view)))
+        ])
+        request = RequestFactory().get('/')
+        match = r.resolve(request.path)
+        response = match.func(request, **match.kwargs)
+        self.assertEqual(response, 5)
+
     def test_sub_request(self):
         r = RequestFactory().post('/foo/bar/baz?x=1', data=dict(y=2))
         sr = SubRequest(r)
