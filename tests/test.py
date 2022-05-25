@@ -86,25 +86,35 @@ class TestBasic(unittest.TestCase):
         r = RequestFactory().post('/foo/bar/baz?x=1', data=dict(y=2))
         sr = SubRequest(r)
 
+        self.assertEqual(sr.request, r)
+
+        # Custom attribute setting/clearing
         sr.custom_property = 5
         self.assertEqual(sr.custom_property, 5)
         sr.clear_data()
         with self.assertRaises(AttributeError):
             sr.custom_property
 
-        self.assertEqual(sr.request, r)
+        # HttpRequest attribute delegation
+        for attr in SubRequest.PUBLIC_REQUEST_ATTRIBUTES :
+            self.assertTrue(hasattr(sr, attr))
+            self.assertEqual(getattr(sr, attr), getattr(r, attr))
+        for attr in SubRequest.SETTABLE_REQUEST_ATTRIBUTES :
+            self.assertFalse(hasattr(sr, attr))
+            setattr(sr, attr, attr)
+            self.assertEqual(getattr(sr, attr), attr)
+            self.assertEqual(getattr(r, attr), attr)
+        # Make sure clear_data doesn't wipe out request attributes
+        sr.clear_data()
+        for attr in SubRequest.SETTABLE_REQUEST_ATTRIBUTES :
+            self.assertEqual(getattr(sr, attr), attr)
 
-        self.assertEqual(sr.headers , r.headers)
-        self.assertEqual(sr.GET.get('x') , '1')
-        self.assertEqual(sr.POST.get('y') , '2')
-        self.assertEqual(len(sr.FILES) , 0)
-        self.assertEqual(sr.method , 'POST')
 
+        # advance() behaviour
         with self.assertRaises(ValueError) :
             sr.advance('bar')
         with self.assertRaises(ValueError) :
             sr.advance('foo')
-
         sr.advance('foo/bar/')
         self.assertEqual(sr.sub_path, 'baz')
         self.assertEqual(sr.parent_path+sr.sub_path, r.path)
@@ -114,11 +124,15 @@ class TestBasic(unittest.TestCase):
 
         # custom attributes can be set
         sr.foo = 1
-        # but class methods/properties cannot be overridden
+        # class methods cannot be shadowed
         with self.assertRaises(AttributeError):
             sr.advance = 1
+        # class properties cannot be shadowed
         with self.assertRaises(AttributeError):
             sr.sub_path = 1
+        # HttpRequest attributes cannot be shadowed
+        with self.assertRaises(AttributeError):
+            sr.path = 1
         # And new private properties cannot be added
         with self.assertRaises(AttributeError):
             sr._foo = 1

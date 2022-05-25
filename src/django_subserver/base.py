@@ -3,19 +3,68 @@ from django.http import HttpRequest, HttpResponse
 
 class SubRequest:
     '''
-    Very similar to HttpRequest, with the ability to keep track of
+    HttpRequest wrapper, with the ability to keep track of
     "parent_path" and "sub_path".
 
-    SubRequests wrap HttpRequests, and expose most of the important
-    HttpRequest properties from the request.
+    Exposes all of the public attributes of the underlying HttpRequest,
+    so in most cases a SubRequest can be used directly where an 
+    HttpRequest would have been used.
 
-    The wrapped request can be accessed directly, if needed.
-
-    This interface is considered final.
-    We'll never add any more (public) attributes.
-    Users of SubRequests should feel free to add attributes at will, 
-    to pass information from one "sub view" to another.
+    We also explicitly endorse the adding of arbitrary data directly to
+    SubRequest instances. We have mechanisms in place to prevent the
+    accidental shadowing of standard SubRequest or HttpRequest attributes.
+    You can also call "clear_data()" to erase any previously added custom
+    data (to ensure that the next SubView you delegate to is not dependent
+    on that data). Our interface is considered final. We'll never add any 
+    more (public) attributes (without changing major version number).
     '''
+
+    # We delegate the getting of these attributes to the underlying HttpRequest
+    # Users cannot shadow them on SubRequest instances
+    PUBLIC_REQUEST_ATTRIBUTES = [
+        'scheme',
+        'body',
+        'path',
+        'path_info',
+        'method',
+        'encoding',
+        'content_type',
+        'content_params',
+        'GET',
+        'POST',
+        'COOKIES',
+        'FILES',
+        'META',
+        'headers',
+        'resolver_match',
+
+        # methods:
+        'get_host',
+        'get_port',
+        'get_full_path',
+        'get_full_path_info',
+        'build_absolute_uri',
+        'get_signed_cookie',
+        'is_secure',
+        # 'is_ajax',   # deprecated in 3.1, and removed in 4.0
+        'accepts',
+        'read',
+        'readline',
+        '__iter__',
+    ]
+
+    # Common dynamically added HttpRequest instance attributes
+    # We delegate getting AND setting to underlying HttpRequest
+    SETTABLE_REQUEST_ATTRIBUTES = [
+        'current_app',
+        'urlconf',
+        'exception_reporter_filter',
+        'exception_reporter_class',
+        'session',
+        'site',
+        'user',
+    ]
+
     def __init__(self, request: HttpRequest): 
         self._request = request
         self._parent_path_length = 1
@@ -24,8 +73,9 @@ class SubRequest:
     def request(self) -> HttpRequest:
         '''
         Returns the HttpRequest associated with this SubRequest.
-        We have properties to expose the most commonly needed attributes from this request,
-        but users can always access the request directly, if needed.
+        For the most part, you can use a SubRequest instance as if it was
+        the underlying HttpRequest, so you shouldn't need this often
+        (if at all).
         '''
         return self._request
 
@@ -63,47 +113,53 @@ class SubRequest:
 
         Useful if you want to ensure that the next sub view you delegate to
         is decoupled from previous sub views.
+
+        Note that it does NOT clear any of the _settable_request_attributes
+        (which are set directly on the underlying HttpRequest).
         '''
         keys = [key for key in self.__dict__ if not key.startswith('_')]
         for key in keys :
             del self.__dict__[key]
 
+    # Delegate getting/setting of various properties to the underlying request
     def __setattr__(self, attr, value):
         '''
         We encourage adding arbitrary data directly onto SubRequest instances.
-        Here, we make sure such usage doesn't accidentally shadow class attributes.
+        Here, we make sure such usage doesn't accidentally shadow class attributes, or standard HTTPRequest attributes.
         We also ensure that attributes don't start with '_', because those 
         are reservered for use internally by the class.
         '''
+        def message(attr, reason):
+            return f'Illegal attribute: "{attr}"; {reason}'
+
         if attr.startswith('_') :
             if attr not in ('_request', '_parent_path_length') :
-                raise AttributeError(f'Private attributes (starting with "_") are not allowed on SubRequest instances. They are reserved for use by the SubRequest class.')
-        else :
-            if hasattr(SubRequest, attr):
-                raise AttributeError(f'Cannot shadow SubRequest attributes/properties. "{attr}" is already defined on SubRequest.')
-        super().__setattr__(attr, value)
+                raise AttributeError(message(attr, 'private attributes (starting with "_") are reserved for internal use by SubRequest'))
 
-    # Expose various useful request properties
-    @property 
-    def headers(self):
-        '''Returns self.request.headers'''
-        return self._request.headers
-    @property 
-    def method(self):
-        '''Returns self.request.method'''
-        return self._request.method
-    @property 
-    def GET(self):
-        '''Returns self.request.GET'''
-        return self._request.GET
-    @property 
-    def POST(self):
-        '''Returns self.request.POST'''
-        return self._request.POST
-    @property 
-    def FILES(self):
-        '''Returns self.request.FILES'''
-        return self._request.FILES
+        if hasattr(SubRequest, attr):
+            raise AttributeError(message(attr, 'cannot shadow SubRequest attributes.'))
+        
+        if attr in self.PUBLIC_REQUEST_ATTRIBUTES:
+            raise AttributeError(message(attr, 'cannot shadow HTTPRequest attributes'))
+
+        if attr in self.SETTABLE_REQUEST_ATTRIBUTES :
+            setattr(self._request, attr, value)
+        else :
+            super().__setattr__(attr, value)
+    def __getattr__(self, attr):
+        if (
+            attr in self.PUBLIC_REQUEST_ATTRIBUTES 
+            or attr in self.SETTABLE_REQUEST_ATTRIBUTES 
+        ) :
+            return getattr(self._request, attr)
+        return super().__getattr__(attr)
+    def __hasattr__(self, attr):
+        if (
+            attr in self.PUBLIC_REQUEST_ATTRIBUTES
+            or attr in self.SETTABLE_REQUEST_ATTRIBUTES 
+        ) :
+            return hasattr(self._request, attr)
+        return super().__hasattr__(attr)
 
 class SubView(ABC):
     '''
