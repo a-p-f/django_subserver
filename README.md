@@ -8,7 +8,7 @@ The "sub view" approach is different. A sub view may return a response, or it ma
 
 Each sub view in the chain can preform any type of middleware action - attach data to the request, return early, manipulate the response from subsequent sub views, or handle exceptions from subsequent sub views.
 
-## Intro
+## Overview
 
 `SubRequest`: A simple wrapper around django's HttpRequest, which maintains a concept of "parent_path" (which has already been interpreted by higher sub views) and "sub_path" (which must still be interpreted). You won't likely ever have to create these, but you'll be using them instead of plain HttpRequests in your sub views.
 
@@ -17,6 +17,10 @@ Each sub view in the chain can preform any type of middleware action - attach da
 `MethodView`: A sub view which performs dispatch-by-method, similar to django.views.generic.View. 
 
 `sub_view_urls(sub_view)`: A utility function for generating a list of (2) url patterns, for mapping a parent path to a particular sub view.
+
+`module_view.module_view` and `module_view.package_view_importer`:
+Utility functions for organizing your code in a module-per-view structure.
+Completely independent of the rest of django_subserver.
 
 ## Recommended (Basic) Setup
 
@@ -40,19 +44,15 @@ urlpatterns = [
 We recommend:
 - put all your routers in a single file
 - use common prefix for related routers
-- use a utility function to import views that are defined in a separate module, so you don't have to write module name twice
 - use snake_case instead of CamelCase for your Router subclasses: you'll have a lot of routers, and the names will be easier to read this way (especially if you use code folding or some other editor feature to show a condensed list of all your routers)
 - put all of your auth logic in routers.py: the final sub views you delegate to should be dumb
 
 ```py
 from django_subserver import Router
+from django_subserver.module_view import package_view_importer
 from importlib import import_module
 
-def get_view(module_name):
-    '''
-    Simple helper for imorting sub views defined in the sub_views package
-    '''
-    return import_module('sub_views.'+module_name).View()
+get_view = package_view_importer('project.view_modules')
 
 class root_router(Router):
     root_view = get_view('home')

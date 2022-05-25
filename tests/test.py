@@ -7,7 +7,7 @@ from django import urls
 from django.http import Http404, HttpResponse, JsonResponse
 from django.test import Client, RequestFactory
 from django import urls
-from django_subserver import MethodView, Router, SubRequest, sub_view_urls
+from django_subserver import Router, SubRequest, sub_view_urls
 from django_subserver.base import SubView
 from django_subserver.pattern import Pattern
 import json
@@ -317,51 +317,35 @@ class ReturnA(SubView):
     def __call__(self, *args, **kwargs):
         return 'A'
 
-    # TODO - string ViewSpec test
+class TestModuleView(unittest.TestCase):
+    def test(self):
+        from django_subserver.module_view import package_view_importer
+        importer = package_view_importer('tests.view_modules')
 
-class TestMethodView(unittest.TestCase):
-    def sub_request_factory(self, path):
-        r = RequestFactory().get(path)
-        return SubRequest(r)
+        view = importer('hello_world')
 
-    def test_get(self):
-        class View(MethodView):
-            def get(request):
-                return request
+        rf = RequestFactory()
 
-        h = View()
-        req = self.sub_request_factory('/foo/')
-        response = h(req)
-        self.assertEqual(response, req)
-
-    def test_non_method_error(self):
-        class View(MethodView):
-            foo = 1
-        with self.assertRaises(AttributeError):
-            View()
-
-    def test_method_not_allowed(self):
-        class View(MethodView):
-            def get(request):
-                return request
-
-        h = View()
-        req = RequestFactory().post('/foo/')
-        req = SubRequest(req)
-        response = h(req)
-        self.assertEqual(response.status_code, 405)
-
-    def test_options(self):
-        class View(MethodView):
-            def get(request):
-                return 1
-            def post(request):
-                return 2
-        h = View()
-        req = RequestFactory().options('/foo/')
-        req = SubRequest(req)
-        response = h(req)
-        self.assertEqual(response.get('allow'), 'GET, POST, OPTIONS')
+        # test auth
+        self.assertEqual(
+            view(rf.get('/deny')),
+            'DENIED',
+        )
+        # test get
+        self.assertEqual(
+            view(rf.get('/')),
+            'Hello, World!',
+        )
+        # Not Allowed
+        self.assertEqual(
+            view(rf.post('/')).status_code,
+            405,
+        )
+        # Options
+        self.assertEqual(
+            view(rf.options('/')).get('allow'),
+            'GET, OPTIONS',
+        )
 
 if __name__ == '__main__':
     unittest.main()
