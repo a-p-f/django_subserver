@@ -91,7 +91,7 @@ class TestBasic(unittest.TestCase):
         # Custom attribute setting/clearing
         sr.custom_property = 5
         self.assertEqual(sr.custom_property, 5)
-        sr.clear_data()
+        sr.clear_data_except()
         with self.assertRaises(AttributeError):
             sr.custom_property
 
@@ -99,16 +99,6 @@ class TestBasic(unittest.TestCase):
         for attr in SubRequest.PUBLIC_REQUEST_ATTRIBUTES :
             self.assertTrue(hasattr(sr, attr))
             self.assertEqual(getattr(sr, attr), getattr(r, attr))
-        for attr in SubRequest.SETTABLE_REQUEST_ATTRIBUTES :
-            self.assertFalse(hasattr(sr, attr))
-            setattr(sr, attr, attr)
-            self.assertEqual(getattr(sr, attr), attr)
-            self.assertEqual(getattr(r, attr), attr)
-        # Make sure clear_data doesn't wipe out request attributes
-        sr.clear_data()
-        for attr in SubRequest.SETTABLE_REQUEST_ATTRIBUTES :
-            self.assertEqual(getattr(sr, attr), attr)
-
 
         # advance() behaviour
         with self.assertRaises(ValueError) :
@@ -136,6 +126,28 @@ class TestBasic(unittest.TestCase):
         # And new private properties cannot be added
         with self.assertRaises(AttributeError):
             sr._foo = 1
+
+    def test_sub_request_clear_data(self):
+        r = RequestFactory().post('/foo/bar/baz?x=1', data=dict(y=2))
+        r.user = 'Alex'
+        sr = SubRequest(r)
+        self.assertEqual(sr.user, 'Alex')
+        sr.foo = 5
+        self.assertEqual(sr.foo, 5)
+        sr.clear_data_except(common_middleware=True)
+        self.assertEqual(sr.user, 'Alex')
+        sr.clear_data_except()
+        with self.assertRaises(AttributeError):
+            sr.user
+
+        sr.foo = 5
+        sr.bar = 2
+        sr.baz = 1
+        sr.clear_data_except('foo', 'bar')
+        self.assertEqual(sr.foo, 5)
+        self.assertEqual(sr.bar, 2)
+        with self.assertRaises(AttributeError):
+            sr.baz
 
 class TestPattern(unittest.TestCase):
     def test_format_errors(self):

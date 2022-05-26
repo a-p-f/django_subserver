@@ -53,21 +53,30 @@ class SubRequest:
         '__iter__',
     ]
 
-    # Common dynamically added HttpRequest instance attributes
-    # We delegate getting AND setting to underlying HttpRequest
-    SETTABLE_REQUEST_ATTRIBUTES = [
-        'current_app',
-        'urlconf',
-        'exception_reporter_filter',
-        'exception_reporter_class',
+    # Middleware attributes added by some of Django's built-in middleware
+    # (or app code middleware, but used by django template system)
+    COMMON_MIDDLEWARE_ATTRIBUTES = [
+        'current_app',  # used by `url` template tag
         'session',
         'site',
         'user',
+
+        # Note - the following attributes can be set by custom middleware, and django will read them in it's own middleware
+        # There really isn't any need for app code to read these, though, so we don't include them
+        # 'urlconf',
+        # 'exception_reporter_filter',
+        # 'exception_reporter_class',
     ]
+
 
     def __init__(self, request: HttpRequest): 
         self._request = request
         self._parent_path_length = 1
+        for attr in self.COMMON_MIDDLEWARE_ATTRIBUTES :
+            try :
+                setattr(self, attr, getattr(request, attr))
+            except AttributeError :
+                pass
 
     @property
     def request(self) -> HttpRequest:
@@ -107,21 +116,30 @@ class SubRequest:
             raise ValueError('path_portion is not a prefix of sub_path')
         self._parent_path_length += len(path_portion)
 
-    def clear_data(self):
+    def clear_data_except(self, *exceptions, common_middleware=False):
         '''
-        Removes all custom data from instance.
+        Removes custom data from instance.
 
         Useful if you want to ensure that the next sub view you delegate to
         is decoupled from previous sub views.
 
-        Note that it does NOT clear any of the _settable_request_attributes
-        (which are set directly on the underlying HttpRequest).
+        exceptions:
+        certain attributes to retain via 
+
+        common_middleware:
+        Retain all COMMON_MIDDLEWARE_ATTRIBUTES
         '''
-        keys = [key for key in self.__dict__ if not key.startswith('_')]
+        if common_middleware :
+            exceptions += tuple(self.COMMON_MIDDLEWARE_ATTRIBUTES)
+
+        keys = [
+            key for key in self.__dict__ 
+            if not key.startswith('_') 
+            and key not in exceptions
+        ]
         for key in keys :
             del self.__dict__[key]
 
-    # Delegate getting/setting of various properties to the underlying request
     def __setattr__(self, attr, value):
         '''
         We encourage adding arbitrary data directly onto SubRequest instances.
@@ -141,25 +159,12 @@ class SubRequest:
         
         if attr in self.PUBLIC_REQUEST_ATTRIBUTES:
             raise AttributeError(message(attr, 'cannot shadow HTTPRequest attributes'))
-
-        if attr in self.SETTABLE_REQUEST_ATTRIBUTES :
-            setattr(self._request, attr, value)
-        else :
-            super().__setattr__(attr, value)
+        
+        super().__setattr__(attr, value)
     def __getattr__(self, attr):
-        if (
-            attr in self.PUBLIC_REQUEST_ATTRIBUTES 
-            or attr in self.SETTABLE_REQUEST_ATTRIBUTES 
-        ) :
+        if attr in self.PUBLIC_REQUEST_ATTRIBUTES :
             return getattr(self._request, attr)
-        return super().__getattr__(attr)
-    def __hasattr__(self, attr):
-        if (
-            attr in self.PUBLIC_REQUEST_ATTRIBUTES
-            or attr in self.SETTABLE_REQUEST_ATTRIBUTES 
-        ) :
-            return hasattr(self._request, attr)
-        return super().__hasattr__(attr)
+        raise AttributeError
 
 class SubView(ABC):
     '''
