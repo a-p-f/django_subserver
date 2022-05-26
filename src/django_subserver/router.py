@@ -110,8 +110,7 @@ class Router(SubView):
             except ValueError :
                 continue
             else :
-                request.advance(match)
-                return view(request, **captures)
+                return view(request.after(match), **captures)
         for view in self.cascade_to :
             try :
                 return view(request)

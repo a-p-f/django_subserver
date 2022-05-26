@@ -1,4 +1,5 @@
 from abc import ABC
+from copy import copy
 from django.http import HttpRequest, HttpResponse
 
 class SubRequest:
@@ -106,7 +107,7 @@ class SubRequest:
         '''
         return self._request.path[self._parent_path_length:]
 
-    def advance(self, path_portion: str):
+    def after(self, path_portion: str):
         '''
         Note: end users aren't likely to ever need this.
         '''
@@ -114,7 +115,10 @@ class SubRequest:
             raise ValueError('path_portion must end with "/"')
         if not self.sub_path.startswith(path_portion) :
             raise ValueError('path_portion is not a prefix of sub_path')
-        self._parent_path_length += len(path_portion)
+
+        next_request = copy(self)
+        next_request._parent_path_length += len(path_portion)
+        return next_request
 
     def clear_data_except(self, *exceptions, common_middleware=False):
         '''

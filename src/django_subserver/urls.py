@@ -33,10 +33,10 @@ def sub_view_urls(sub_view:SubView) -> Sequence[urls.URLPattern]:
         if not handled.endswith('/') :
             raise ValueError(f'Invalid parent path: "{handled}". Any prefix you include() sub_view_urls() underneath MUST end in "/".')
 
-        # handled endswith '/', but that '/' is already part of sub_request.parent_path, not sub_request.sub_path
+        # handled startswith '/', but that '/' is already part of sub_request.parent_path, not sub_request.sub_path
         to_advance = handled[1:]
         if to_advance :
-            sub_request.advance(to_advance)
+            sub_request = sub_request.after(to_advance)
         return sub_view(sub_request, **other_url_kwargs)
 
     return [

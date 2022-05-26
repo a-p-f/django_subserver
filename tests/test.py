@@ -97,26 +97,18 @@ class TestBasic(unittest.TestCase):
 
         # HttpRequest attribute delegation
         for attr in SubRequest.PUBLIC_REQUEST_ATTRIBUTES :
-            self.assertTrue(hasattr(sr, attr))
+            # These aren't available in all supported versions of django
+            # Will raise AttributeError in some versions
+            if attr in ['is_ajax', 'accepts'] :
+                continue
+
             self.assertEqual(getattr(sr, attr), getattr(r, attr))
-
-        # advance() behaviour
-        with self.assertRaises(ValueError) :
-            sr.advance('bar')
-        with self.assertRaises(ValueError) :
-            sr.advance('foo')
-        sr.advance('foo/bar/')
-        self.assertEqual(sr.sub_path, 'baz')
-        self.assertEqual(sr.parent_path+sr.sub_path, r.path)
-
-        with self.assertRaises(ValueError):
-            sr.advance('baz')
 
         # custom attributes can be set
         sr.foo = 1
         # class methods cannot be shadowed
         with self.assertRaises(AttributeError):
-            sr.advance = 1
+            sr.after = 1
         # class properties cannot be shadowed
         with self.assertRaises(AttributeError):
             sr.sub_path = 1
@@ -148,6 +140,31 @@ class TestBasic(unittest.TestCase):
         self.assertEqual(sr.bar, 2)
         with self.assertRaises(AttributeError):
             sr.baz
+
+    def test_sub_request_after(self):
+        r = RequestFactory().post('/foo/bar/baz?x=1', data=dict(y=2))
+        sr = SubRequest(r)
+
+        with self.assertRaises(ValueError) :
+            sr.after('bar')
+        with self.assertRaises(ValueError) :
+            sr.after('foo')
+        sr = sr.after('foo/bar/')
+        self.assertEqual(sr.sub_path, 'baz')
+        self.assertEqual(sr.parent_path+sr.sub_path, r.path)
+        with self.assertRaises(ValueError):
+            sr.after('baz')
+
+        # Check that custom data is copied, and independent
+        sr = SubRequest(r)
+        sr.foo = 5
+        sr.bar = 4
+        sr2 = sr.after('foo/')
+        sr2.clear_data_except('foo')
+        self.assertEqual(sr2.foo, 5)
+        with self.assertRaises(AttributeError):
+            sr2.bar
+        self.assertEqual(sr.bar, 4)
 
 class TestPattern(unittest.TestCase):
     def test_format_errors(self):
