@@ -3,7 +3,9 @@ Note - this module is actually completely independent of the rest of django_subs
 '''
 
 from django import http
+from django.http import HttpRequest, HttpResponse
 from importlib import import_module
+from typing import Callable
 
 _known_methods = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace']
 def _options(allowed_methods):
@@ -14,7 +16,7 @@ def _options(allowed_methods):
     response['Content-Length'] = '0'
     return response
 
-def module_view(name, package=None):
+def module_view(name, package=None) -> Callable[[HttpRequest], HttpResponse]:
     '''
     Imports the named module, and creates a view from it.
 
@@ -24,16 +26,6 @@ def module_view(name, package=None):
 
     -------------------------------------------------------------------
     The referenced module may implement:
-
-    handle_auth(request: SubRequest) -> Optional[HttpResponse]
-        Will be called before all HTTP methods.
-        You can return a response to short-circuit processing.
-
-        We do NOT recommend doing any complex permission checks here.
-        Instead, the parent Router should set permission flags (or 
-        permission checking functions) on the request. In that case, you 
-        can check those flags/functions here, and so can the parent page 
-        (so it can determine whether or not to link to us).        
 
     handle_get
     handle_post
@@ -53,7 +45,8 @@ def module_view(name, package=None):
     function with the same name as an http-method-handler function.
 
     -------------------------------------------------------------------
-    Note: the returned function 
+    Note: the returned view function is a "simple view".
+    It's sole argument is an HttpRequest (or a SubRequest).
     '''
     module = import_module(name, package)
     methods = {}
@@ -73,10 +66,6 @@ def module_view(name, package=None):
         Anything that needs to interpret url parameters should be a Router,
         in a routers.py file. 
         '''
-        early_response = auth(request)
-        if early_response :
-            return early_response
-
         mname = request.method.lower()
         try :
             method = methods[mname]

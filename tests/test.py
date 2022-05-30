@@ -355,11 +355,6 @@ class TestModuleView(unittest.TestCase):
 
         rf = RequestFactory()
 
-        # test auth
-        self.assertEqual(
-            view(rf.get('/deny')),
-            'DENIED',
-        )
         # test get
         self.assertEqual(
             view(rf.get('/')),
