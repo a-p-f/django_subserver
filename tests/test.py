@@ -342,6 +342,25 @@ class TestRouter(unittest.TestCase):
             'Hello, World!',
         )
 
+    def test_optional_route(self):
+        class R(Router):
+            routes = {
+                'a/': lambda r: 1,
+                'b/': False,
+            }
+        self.assertEqual(
+            R()(SubRequest(RequestFactory().get('/a/'))),
+            1,
+        )
+        with self.assertRaises(Http404) :
+            R()(SubRequest(RequestFactory().get('/b/')))
+    def test_optional_cascade(self):
+        class R(Router):
+            cascade = [False]
+        with self.assertRaises(Http404) :
+            R()(SubRequest(RequestFactory().get('/a')))
+
+
 class ReturnA(SubView):
     def __call__(self, *args, **kwargs):
         return 'A'

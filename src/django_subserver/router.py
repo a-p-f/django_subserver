@@ -51,18 +51,23 @@ class Router(SubView):
     - root_view
         called when sub_path == ''
     - routes
-        mapping of (sub_path) patterns to sub views
+        mapping of (sub_path) patterns to views
     - cascade
-        list of sub views to try
+        list of views to try
         if any of them do _not_ raise Http404, we'll return whatever they do
     - path_view
         called when sub_path is non-empty, and none of the above match/return a response
 
     Subclasses may also want to override prepare and/or dispatch.
+
+    Note that `routes` and `cascade` may also contain falsey values. 
+    Those will be ignored. 
+    This makes it easier to perform environment-dependent routing
+    (ie. only add a given route if settings.DEBUG).
     '''
     root_view: Optional[SubView] = None
-    routes: Mapping[str, ViewSpec] = dict()
-    cascade: Sequence[ViewSpec] = []
+    routes: Mapping[str, Optional[ViewSpec]] = dict()
+    cascade: Sequence[Optional[ViewSpec]] = []
     path_view: Optional[SubView] = None
 
     def prepare(self, request: SubRequest, **captured_params:Any) -> Optional[HttpResponse] :
@@ -91,10 +96,12 @@ class Router(SubView):
             # TODO - implement Pattern
             (Pattern(pattern), _get_view(self.__class__, view_spec))
             for pattern, view_spec in self.__class__.routes.items()
+            if view_spec
         ]
         self.cascade_to = [
             _get_view(self.__class__, view_spec)
             for view_spec in self.__class__.cascade
+            if view_spec
         ]
     def __call__(self, request:SubRequest, **captured_params:[Any]) -> HttpResponse :
         possible_response = self.prepare(request, **captured_params)
