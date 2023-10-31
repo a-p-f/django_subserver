@@ -16,7 +16,7 @@ Each sub view in the chain can preform any type of middleware action - attach da
 
 `MethodView`: A sub view which performs dispatch-by-method, similar to django.views.generic.View. 
 
-`sub_view_urls(sub_view)`: A utility function for generating a list of (2) url patterns, for mapping a parent path to a particular sub view.
+`sub_view_urls(sub_view)`: A utility function for generating a list of url patterns, for mapping a parent path to a particular sub view.
 
 `module_view.module_view` and `module_view.package_view_importer`:
 Utility functions for organizing your code in a module-per-view structure.
@@ -106,3 +106,7 @@ Read the code.
 This is very similar to Dart's "shelf" package (https://pub.dev/packages/shelf). I've never used it, but did some take some inspiration from it after glancing it over.
 
 I've had this concept in my mind for a long time, and there are probably other implementations of it.
+
+## TODO
+
+Add debug logging (which routers are handling the request)

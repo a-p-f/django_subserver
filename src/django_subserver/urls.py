@@ -23,6 +23,12 @@ def sub_view_urls(sub_view:SubView) -> Sequence[urls.URLPattern]:
     url_patterns = [
         path('my_sub_app', include(dss.sub_view_urls(my_sub_app))),
     ]
+
+    Note: we used to implement this with urls.path, instead of urls.re_path.
+    That approach required two separate paths.
+    However, it was actually broken, so we switched to re_path.
+    For backward compatibility, we're not changing our signature.
+    We could, however, _add_ a simpler sub_view_path(SubView)->URLPattern function to this module.
     '''
     def view(request, sub_path='', **other_url_kwargs):
         sub_request = SubRequest(request)
@@ -40,8 +46,6 @@ def sub_view_urls(sub_view:SubView) -> Sequence[urls.URLPattern]:
         return sub_view(sub_request, **other_url_kwargs)
 
     return [
-        # The empty sub_path case
-        urls.path('', view),
-        # The non-empty sub_path case
-        urls.path('<path:sub_path>', view),
+        # Match anything, including newlines (which might be encoded in URL as %0A)
+        urls.re_path(r'^(?P<sub_path>[\s\S]*)$', view),
     ]

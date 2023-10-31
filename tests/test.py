@@ -63,6 +63,10 @@ class TestBasic(unittest.TestCase):
         self.assertEqual(data['sub_path'], '')
         self.assertEqual(data['kwargs'], dict(x=1))
 
+        # Note: here we're verifying that '%0A' doesn't "break" sub_view_urls, like it used to
+        data = get_json_data('/echoing_sub_view/a%0A')
+        self.assertEqual(data['sub_path'], 'a\n')
+
     def test_root_urls(self):
         '''
         Note - here we're verifying that sub_view_urls works when installed at '/'.
