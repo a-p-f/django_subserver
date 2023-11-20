@@ -156,7 +156,7 @@ class SubRequest:
 
         if attr.startswith('_') :
             if attr not in ('_request', '_parent_path_length') :
-                raise AttributeError(message(attr, 'private attributes (starting with "_") are reserved for internal use by SubRequest'))
+                raise AttributeError(message(attr, 'private attributes (starting with "_") are reserved for internal use by SubRequest. If you are using 3rd party apps that get/set "private" attributes on the request object, be sure to pass them the value of SubRequest.request, rather than a SubRequest directly.'))
 
         if hasattr(SubRequest, attr):
             raise AttributeError(message(attr, 'cannot shadow SubRequest attributes.'))
@@ -168,7 +168,7 @@ class SubRequest:
     def __getattr__(self, attr):
         if attr in self.PUBLIC_REQUEST_ATTRIBUTES :
             return getattr(self._request, attr)
-        raise AttributeError
+        raise AttributeError(f'{self} has no "{attr}" attribute. Did you mean to read from SubRequest.request, instead?')
 
 class SubView(ABC):
     '''
